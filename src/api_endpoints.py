@@ -2,7 +2,7 @@ import logging
 import time
 
 from datetime import timedelta
-from flask import Blueprint, Response, request
+from flask import Blueprint, Response, request, jsonify
 
 from utils.config import POD_NAME
 from utils.logging import is_ready_gauge, last_updated_gauge, job_start_counter, job_complete_counter, job_duration_summary
@@ -13,6 +13,13 @@ api_endpoints = Blueprint('api', __name__, url_prefix='/api')
 # NB: uncomment code in main.py to enable these endpoints
 # Any endpoints added here will be available at /api/<endpoint> - e.g. http://127.0.0.1:8080/api/example
 # Change the the example below to suit your needs + add more as needed
+
+
+@api_endpoints.route('/webhook', methods=['POST'])
+def webhook_projects():
+    payload = request.get_json()
+    logger.info('Webhook received: ' + str(payload))
+    return Response(jsonify(True), status=200)
 
 
 @api_endpoints.route('/example', methods=['GET', 'POST'])
