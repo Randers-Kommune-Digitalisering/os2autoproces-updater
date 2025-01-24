@@ -18,18 +18,13 @@ api_endpoints = Blueprint('api-endpoints', __name__, url_prefix='/api')
 
 @api_endpoints.route('/webhook', methods=['POST'])
 def webhook_projects():
-    if request.headers.get('Content-Type') == 'application/x-www-form-urlencoded':
-        payload = request.form.to_dict()
-        try:
-            json_payload = json.loads(list(payload.keys())[0])
-            logger.info('Webhook received: ' + str(json_payload))
-            return jsonify(True), 200
-        except (json.JSONDecodeError, IndexError) as e:
-            logger.error('Failed to parse payload: ' + str(e))
-            return Response('Invalid payload', status=400)
-
-    else:
-        return Response('Content-Type must be application/x-www-form-urlencoded', status=400)
+    try:
+        payload = request.get_json(force=True)
+        logger.info('Webhook received: ' + json.dumps(payload))
+        return jsonify(True), 200
+    except Exception as e:
+        logger.error(f'Error parsing webhook JSON: {e}')
+        return Response('Payload not in JSON format', status=400)
 
 
 @api_endpoints.route('/example', methods=['GET', 'POST'])
