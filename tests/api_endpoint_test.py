@@ -13,7 +13,7 @@ def app():
     app.config.update({
         "TESTING": True,
     })
-    app.register_blueprint(api_endpoints)
+    app.register_blueprint(api_endpoints, name='api-endpoints-test')
     yield app
 
 
