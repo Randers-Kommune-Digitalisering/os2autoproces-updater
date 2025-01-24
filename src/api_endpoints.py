@@ -19,7 +19,7 @@ api_endpoints = Blueprint('api-endpoints', __name__, url_prefix='/api')
 def webhook_projects():
     payload = request.get_json()
     logger.info('Webhook received: ' + str(payload))
-    return Response(jsonify(True), status=200)
+    return jsonify(True), 200
 
 
 @api_endpoints.route('/example', methods=['GET', 'POST'])
