@@ -17,9 +17,13 @@ api_endpoints = Blueprint('api-endpoints', __name__, url_prefix='/api')
 
 @api_endpoints.route('/webhook', methods=['POST'])
 def webhook_projects():
-    payload = request.get_json()
-    logger.info('Webhook received: ' + str(payload))
-    return jsonify(True), 200
+    if request.headers.get('Content-Type') == 'application/x-www-form-urlencoded':
+        payload = request.get_json()
+        logger.info('Webhook received: ' + str(payload))
+        return jsonify(True), 200
+
+    else:
+        return Response('Content-Type must be application/x-www-form-urlencoded', status=400)
 
 
 @api_endpoints.route('/example', methods=['GET', 'POST'])
