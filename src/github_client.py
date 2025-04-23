@@ -39,23 +39,130 @@ class GithubClient:
     def __init__(self, base_url, access_token):
         self.api_client = GithubAPIClient.get_client(base_url, access_token)
 
-    def get_issues(self, repo, state='open'):
-        url = f"{self.api_client.url}/repos/{repo}/issues"
-        headers = self.api_client.get_auth_headers()
-        params = {'state': state}
-        response = requests.get(url, headers=headers, params=params)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            logger.error(f"Failed to fetch issues: {response.status_code} - {response.text}")
-            return None
-
     def get_user(self):
         url = f"{self.api_client.url}/user"
         headers = self.api_client.get_auth_headers()
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
-            return response.json()
+            return {'status': 200, 'data': response.json()}
+        elif response.status_code == 404:
+            logger.error("User not found")
+            return {'status': 404, 'data': None}
         else:
             logger.error(f"Failed to fetch user: {response.status_code} - {response.text}")
-            return None
+            return {'status': response.status_code, 'data': None}
+
+    def get_issue_from_node(self, node_id):
+        query = """
+        query($node_id: ID!) {
+            node(id: $node_id) {
+                ... on ProjectV2Item {
+                    id
+                    fieldValues(first: 100) {
+                        nodes {
+                            ... on ProjectV2ItemFieldTextValue {
+                                text
+                                field {
+                                    ... on ProjectV2FieldCommon {
+                                        name
+                                    }
+                                }
+                            }
+                            ... on ProjectV2ItemFieldDateValue {
+                                date
+                                field {
+                                    ... on ProjectV2FieldCommon {
+                                        name
+                                    }
+                                }
+                            }
+                            ... on ProjectV2ItemFieldSingleSelectValue {
+                                name
+                                field {
+                                    ... on ProjectV2FieldCommon {
+                                        name
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    content {
+                        ... on DraftIssue {
+                            title
+                            body
+                        }
+                        ... on Issue {
+                            title
+                            body
+                            assignees(first: 10) {
+                                nodes {
+                                    login
+                                }
+                            }
+                        }
+                        ... on PullRequest {
+                            title
+                            body
+                            assignees(first: 10) {
+                                nodes {
+                                    login
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """
+        variables = {"node_id": node_id}
+        url = f"{self.api_client.url}/graphql"
+        headers = self.api_client.get_auth_headers()
+        response = requests.post(url, headers=headers, json={"query": query, "variables": variables})
+        if response.status_code == 200:
+            return {'status': 200, 'data': response.json()}
+        elif response.status_code == 404:
+            logger.error("Issue not found")
+            return {'status': 404, 'data': None}
+        else:
+            logger.error(f"Failed to fetch issue: {response.status_code} - {response.text}")
+            return {'status': response.status_code, 'data': None}
+
+   # def get_issues(self, repo, state='open'):
+    #     url = f"{self.api_client.url}/repos/{repo}/issues"
+    #     headers = self.api_client.get_auth_headers()
+    #     params = {'state': state}
+    #     response = requests.get(url, headers=headers, params=params)
+    #     if response.status_code == 200:
+    #         return {'status': 200, 'data': response.json()}
+    #     elif response.status_code == 404:
+    #         logger.error("No issues found for repository")
+    #         return {'status': 404, 'data': None}
+    #     else:
+    #         logger.error(f"Failed to fetch issues for repository: {response.status_code} - {response.text}")
+    #         return {'status': response.status_code, 'data': None}
+        
+    # def get_issue(self, issue_id):
+    #     url = f"{self.api_client.url}/issues/{issue_id}"
+    #     headers = self.api_client.get_auth_headers()
+    #     response = requests.get(url, headers=headers)
+    #     if response.status_code == 200:
+    #         return {'status': 200, 'data': response.json()}
+    #     elif response.status_code == 404:
+    #         logger.error("Issue not found")
+    #         return {'status': 404, 'data': None}
+    #     else:
+    #         logger.error(f"Failed to fetch issue: {response.status_code} - {response.text}")
+    #         return {'status': response.status_code, 'data': None}
+
+    # def get_project_cards(self, project_id, org):
+    #     url = f"{self.api_client.url}/orgs/{org}/projects/{project_id}/columns/cards"
+    #     headers = self.api_client.get_auth_headers()
+    #     response = requests.get(url, headers=headers)
+    #     if response.status_code == 200:
+    #         return {'status': 200, 'data': response.json()}
+    #     elif response.status_code == 404:
+    #         logger.error("No epics found for project")
+    #         return {'status': 404, 'data': None}
+    #     else:
+    #         logger.error(f"Failed to fetch epic: {response.status_code} - {response.text}")
+    #         return {'status': response.status_code, 'data': None}
