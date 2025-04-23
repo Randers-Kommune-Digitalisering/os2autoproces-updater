@@ -18,3 +18,6 @@ POD_NAME = os.getenv('POD_NAME', 'pod_name_not_set')
 
 OS2AUTOPROCES_API_KEY = os.getenv('OS2AUTOPROCES_API_KEY', None)
 OS2AUTOPROCES_API_URL = os.getenv('OS2AUTOPROCES_API_URL', None)
+
+GITHUB_ACCESS_TOKEN = os.getenv('GITHUB_ACCESS_TOKEN', None)
+GITHUB_API_URL = os.getenv('GITHUB_API_URL', None)
