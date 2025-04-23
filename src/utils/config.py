@@ -15,3 +15,6 @@ POD_NAME = os.getenv('POD_NAME', 'pod_name_not_set')
 # DB_HOST = os.environ["DB_HOST"].strip()
 # DB_PORT = os.environ["DB_PORT"].strip()
 # DB_DATABASE = os.environ["DB_DATABASE"].strip()
+
+OS2AUTOPROCES_API_KEY = os.getenv('OS2AUTOPROCES_API_KEY', None)
+OS2AUTOPROCES_API_URL = os.getenv('OS2AUTOPROCES_API_URL', None)
