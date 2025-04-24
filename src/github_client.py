@@ -1,9 +1,7 @@
 import logging
-import time
 import requests
 from typing import Dict, Tuple
 from utils.api_requests import APIClient
-from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +62,7 @@ class GithubClient:
                                 text
                                 field {
                                     ... on ProjectV2FieldCommon {
+                                        id
                                         name
                                     }
                                 }
@@ -72,6 +71,7 @@ class GithubClient:
                                 date
                                 field {
                                     ... on ProjectV2FieldCommon {
+                                        id
                                         name
                                     }
                                 }
@@ -80,6 +80,7 @@ class GithubClient:
                                 name
                                 field {
                                     ... on ProjectV2FieldCommon {
+                                        id
                                         name
                                     }
                                 }
@@ -127,7 +128,32 @@ class GithubClient:
             logger.error(f"Failed to fetch issue: {response.status_code} - {response.text}")
             return {'status': response.status_code, 'data': None}
 
-   # def get_issues(self, repo, state='open'):
+    def update_field_value(self, project_id, node_id, field_id, value):
+        query = """
+        mutation($node_id: ID!, $value: String!, $field_id: ID!, $project_id: ID!) {
+            updateProjectV2ItemFieldValue(input: {
+                projectId: $project_id,
+                itemId: $node_id,
+                value: { text: $value },
+                fieldId: $field_id
+            }) {
+                projectV2Item {
+                    id
+                }
+            }
+        }
+        """
+        variables = {"fieldValueId": node_id, "value": value, "fieldId": field_id, "projectId": project_id}
+        url = f"{self.api_client.url}/graphql"
+        headers = self.api_client.get_auth_headers()
+        response = requests.post(url, headers=headers, json={"query": query, "variables": variables})
+        if response.status_code == 200:
+            return {'status': 200, 'data': response.json()}
+        else:
+            logger.error(f"Failed to update field value: {response.status_code} - {response.text}")
+            return {'status': response.status_code, 'data': None}
+
+    # def get_issues(self, repo, state='open'):
     #     url = f"{self.api_client.url}/repos/{repo}/issues"
     #     headers = self.api_client.get_auth_headers()
     #     params = {'state': state}
@@ -140,7 +166,7 @@ class GithubClient:
     #     else:
     #         logger.error(f"Failed to fetch issues for repository: {response.status_code} - {response.text}")
     #         return {'status': response.status_code, 'data': None}
-        
+
     # def get_issue(self, issue_id):
     #     url = f"{self.api_client.url}/issues/{issue_id}"
     #     headers = self.api_client.get_auth_headers()
