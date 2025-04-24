@@ -1,11 +1,8 @@
 import logging
 import json
 
-from datetime import timedelta
 from flask import Blueprint, Response, request, jsonify
-
-from utils.config import POD_NAME
-from utils.config import OS2AUTOPROCES_API_KEY, OS2AUTOPROCES_API_URL, GITHUB_ACCESS_TOKEN, GITHUB_API_URL, GITHUB_PROJECT_ID, GITHUB_ORG
+from utils.config import OS2AUTOPROCES_API_KEY, OS2AUTOPROCES_API_URL, GITHUB_ACCESS_TOKEN, GITHUB_API_URL  # GITHUB_PROJECT_ID, GITHUB_ORG
 from github_client import GithubClient
 from autoproces_client import AutoprocesClient
 
@@ -53,16 +50,17 @@ def github_user():
     else:
         return jsonify({'error': 'Failed to fetch issue'}), 500
 
+
 @api_endpoints.route('/github/epic/<string:node_id>', methods=['GET'])
 def get_project_issue(node_id):
     result = github_client.get_issue_from_node(node_id)
     if result['status'] == 200:
         return jsonify(result['data']), 200
     elif result['status'] == 404:
-        return jsonify({'error': 'No epics found'}), 404
+        return jsonify({'error': 'Epic not found'}), 404
     else:
-        return jsonify({'error': 'Failed to fetch epics'}), 500
-    
+        return jsonify({'error': 'Failed to fetch epic'}), 500
+
 # @api_endpoints.route('/github/issue/<string:issue_id>', methods=['GET'])
 # def github_issue(issue_id):
 #     result = github_client.get_issue_from_node(issue_id)
