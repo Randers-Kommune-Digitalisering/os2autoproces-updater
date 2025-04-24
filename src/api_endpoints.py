@@ -1,5 +1,4 @@
 import logging
-import json
 
 from flask import Blueprint, Response, request, jsonify
 from utils.config import OS2AUTOPROCES_API_KEY, OS2AUTOPROCES_API_URL, GITHUB_ACCESS_TOKEN, GITHUB_API_URL  # GITHUB_PROJECT_ID, GITHUB_ORG
@@ -20,13 +19,65 @@ github_client = GithubClient(base_url=GITHUB_API_URL, access_token=GITHUB_ACCESS
 
 @api_endpoints.route('/webhook', methods=['POST'])
 def github_webhook():
+    # Get payload from GitHub webhook
     try:
         payload = request.get_json(force=True)
-        logger.info('Webhook received: ' + json.dumps(payload))
-        return jsonify(True), 200
+        # logger.info('Webhook received: ' + json.dumps(payload))
     except Exception as e:
         logger.error(f'Error parsing webhook JSON: {e}')
         return Response('Payload not in JSON format', status=400)
+
+    # Updated project epic
+    os2_autoproces_id = None
+    changes = []
+
+    if payload.get('projects_v2_item'):
+        if payload['action'] == 'edited':
+            node_id = payload['projects_v2_item']['node_id']
+
+            # Get issue data from GitHub
+            epic = github_client.get_issue_from_node(node_id)
+            if epic['status'] != 200:
+                logger.error(f"Failed to fetch epic data for node_id {node_id}: {epic['error']}")
+                return Response('Failed to fetch epic data', status=500)
+
+            # Check if the epic is marked as deployed
+            if epic.get('data', {}).get('data', {}).get('node', {}).get('fieldValues', {}).get('nodes'):
+                for field in epic['data']['data']['node']['fieldValues']['nodes']:
+                    # Check if epic has an OS2 Autoproces ID
+                    if field.get('field', {}).get('name') == 'OS2 Autoproces ID':
+                        os2_autoproces_id = field.get('text')
+                        if os2_autoproces_id:  # OS2 Autoproces ID is already set
+                            logger.info(f"Epic {node_id} already exists in OS2 Autoproces with ID {os2_autoproces_id}")
+
+            # Check new changes to field values
+            if payload['changes'].get('field_value'):
+                field_values = payload['changes']['field_value']
+                if not isinstance(field_values, list):
+                    field_values = [field_values]
+
+                for field in field_values:
+                    # Check if newly deployed, unless OS2 Autoproces ID is already set
+                    if os2_autoproces_id is None and field.get('field_name') == 'Fase':
+                        if field.get('to').get('name'):
+                            if '6. Driftstest' in field['to']['name'] or '7. Drift' in field['to']['name']:
+                                # TODO: Create epic in OS2 Autoproces and update field value in GitHub
+                                # TODO: os2_autoproces_id = os2_client.create_epic(epic['data']['data']['node'])
+                                logger.info(f"Epic {node_id} marked as deployed in OS2 Autoproces")
+                    else:
+                        # Store other changes made to epic
+                        changes.append({
+                            'field_name': field.get('field_name'),
+                            'field_id': field.get('field_node_id'),
+                            'from': field.get('from').get('name', field.get('from').get('text')) if field.get('from') else None,
+                            'to': field.get('to').get('name', field.get('to').get('text')) if field.get('to') else None
+                        })
+
+                if os2_autoproces_id and len(changes) > 0:
+                    # TODO: Update epic in OS2 Autoproces with changes
+                    logger.info(f"Updating epic {os2_autoproces_id} in OS2 Autoproces with changes: {changes}")
+
+    return jsonify({"changes": changes, "os2uid": os2_autoproces_id}), 200
 
 
 @api_endpoints.route('/healthz', methods=['GET'])
