@@ -1,7 +1,7 @@
 import logging
 
 from flask import Blueprint, Response, request, jsonify
-from utils.config import OS2AUTOPROCES_API_KEY, OS2AUTOPROCES_API_URL, GITHUB_ACCESS_TOKEN, GITHUB_API_URL  # GITHUB_PROJECT_ID, GITHUB_ORG
+from utils.config import OS2AUTOPROCES_API_KEY, OS2AUTOPROCES_API_URL, GITHUB_ACCESS_TOKEN, GITHUB_API_URL, GITHUB_PROJECT_ID, GITHUB_OS2AUTOPROCES_FIELD_ID
 from github_client import GithubClient
 from autoproces_client import AutoprocesClient
 
@@ -12,17 +12,11 @@ os2_client = AutoprocesClient(base_url=OS2AUTOPROCES_API_URL, api_key=OS2AUTOPRO
 github_client = GithubClient(base_url=GITHUB_API_URL, access_token=GITHUB_ACCESS_TOKEN)
 
 
-# NB: uncomment code in main.py to enable these endpoints
-# Any endpoints added here will be available at /api/<endpoint> - e.g. http://127.0.0.1:8080/api/example
-# Change the the example below to suit your needs + add more as needed
-
-
 @api_endpoints.route('/webhook', methods=['POST'])
 def github_webhook():
     # Get payload from GitHub webhook
     try:
         payload = request.get_json(force=True)
-        # logger.info('Webhook received: ' + json.dumps(payload))
     except Exception as e:
         logger.error(f'Error parsing webhook JSON: {e}')
         return Response('Payload not in JSON format', status=400)
@@ -44,6 +38,7 @@ def github_webhook():
             # Check if the epic is marked as deployed
             if epic.get('data', {}).get('data', {}).get('node', {}).get('fieldValues', {}).get('nodes'):
                 for field in epic['data']['data']['node']['fieldValues']['nodes']:
+
                     # Check if epic has an OS2 Autoproces ID
                     if field.get('field', {}).get('name') == 'OS2 Autoproces ID':
                         os2_autoproces_id = field.get('text')
@@ -55,16 +50,26 @@ def github_webhook():
                 field_values = payload['changes']['field_value']
                 if not isinstance(field_values, list):
                     field_values = [field_values]
-
                 for field in field_values:
+
                     # Check if newly deployed, unless OS2 Autoproces ID is already set
                     if os2_autoproces_id is None and field.get('field_name') == 'Fase':
                         if field.get('to').get('name'):
                             if '6. Driftstest' in field['to']['name'] or '7. Drift' in field['to']['name']:
-                                # TODO: Create epic in OS2 Autoproces and update field value in GitHub
-                                # TODO: os2_autoproces_id = os2_client.create_epic(epic['data']['data']['node'])
-                                logger.info(f"Epic {node_id} marked as deployed in OS2 Autoproces")
+
+                                # Create epic in OS2 Autoproces and update field value in GitHub
+                                response = os2_client.create_epic(epic['data']['data']['node'])
+                                if response['status'] == 201:
+                                    os2_autoproces_id = response['data'].get('id')
+                                else:
+                                    logger.error(f"Failed to create epic in OS2 Autoproces: {response['error']}")
+                                    return Response('Failed to create epic in OS2 Autoproces', status=500)
+
+                                # Update field value in GitHub after creating epic
+                                github_client.update_field_value(GITHUB_PROJECT_ID, node_id, GITHUB_OS2AUTOPROCES_FIELD_ID, os2_autoproces_id)
+                                logger.info(f"Epic {node_id} created OS2 Autoproces and ID updated in GitHub")
                     else:
+
                         # Store other changes made to epic
                         changes.append({
                             'field_name': field.get('field_name'),
@@ -74,8 +79,10 @@ def github_webhook():
                         })
 
                 if os2_autoproces_id and len(changes) > 0:
+                    # for change in changes:
                     # TODO: Update epic in OS2 Autoproces with changes
-                    logger.info(f"Updating epic {os2_autoproces_id} in OS2 Autoproces with changes: {changes}")
+                    os2_client.update_epic(os2_autoproces_id, changes)
+                    logger.info(f"Updating epic with OS2 uid {os2_autoproces_id} in OS2 Autoproces with changes: {changes}")
 
     return jsonify({"changes": changes, "os2uid": os2_autoproces_id}), 200
 
@@ -85,32 +92,33 @@ def health_check():
     return jsonify({'status': 'ok'}), 200
 
 
-@api_endpoints.route('/autoproces/token', methods=['GET'])
-def autoproces():
-    token = os2_client.get_access_token()
-    return jsonify({'status': 'ok', 'token': token}), 200
+# @api_endpoints.route('/autoproces/token', methods=['GET'])
+# def autoproces():
+#     token = os2_client.get_access_token()
+#     return jsonify({'status': 'ok', 'token': token}), 200
 
 
-@api_endpoints.route('/github/user', methods=['GET'])
-def github_user():
-    result = github_client.get_user()
-    if result['status'] == 200:
-        return jsonify(result['data']), 200
-    elif result['status'] == 404:
-        return jsonify({'error': 'Issue not found'}), 404
-    else:
-        return jsonify({'error': 'Failed to fetch issue'}), 500
+# @api_endpoints.route('/github/user', methods=['GET'])
+# def github_user():
+#     result = github_client.get_user()
+#     if result['status'] == 200:
+#         return jsonify(result['data']), 200
+#     elif result['status'] == 404:
+#         return jsonify({'error': 'Issue not found'}), 404
+#     else:
+#         return jsonify({'error': 'Failed to fetch issue'}), 500
 
 
-@api_endpoints.route('/github/epic/<string:node_id>', methods=['GET'])
-def get_project_issue(node_id):
-    result = github_client.get_issue_from_node(node_id)
-    if result['status'] == 200:
-        return jsonify(result['data']), 200
-    elif result['status'] == 404:
-        return jsonify({'error': 'Epic not found'}), 404
-    else:
-        return jsonify({'error': 'Failed to fetch epic'}), 500
+# @api_endpoints.route('/github/epic/<string:node_id>', methods=['GET'])
+# def get_project_issue(node_id):
+#     result = github_client.get_issue_from_node(node_id)
+#     if result['status'] == 200:
+#         return jsonify(result['data']), 200
+#     elif result['status'] == 404:
+#         return jsonify({'error': 'Epic not found'}), 404
+#     else:
+#         return jsonify({'error': 'Failed to fetch epic'}), 500
+
 
 # @api_endpoints.route('/github/issue/<string:issue_id>', methods=['GET'])
 # def github_issue(issue_id):

@@ -129,6 +129,7 @@ class GithubClient:
             return {'status': response.status_code, 'data': None}
 
     def update_field_value(self, project_id, node_id, field_id, value):
+        logger.info(f"Updating field value for node {node_id} in project {project_id} with field {field_id} to {value}")
         query = """
         mutation($node_id: ID!, $value: String!, $field_id: ID!, $project_id: ID!) {
             updateProjectV2ItemFieldValue(input: {
@@ -143,7 +144,7 @@ class GithubClient:
             }
         }
         """
-        variables = {"fieldValueId": node_id, "value": value, "fieldId": field_id, "projectId": project_id}
+        variables = {"project_id": project_id, "node_id": node_id, "field_id": field_id, "value": value}
         url = f"{self.api_client.url}/graphql"
         headers = self.api_client.get_auth_headers()
         response = requests.post(url, headers=headers, json={"query": query, "variables": variables})

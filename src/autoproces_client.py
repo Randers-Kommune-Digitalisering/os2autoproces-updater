@@ -65,3 +65,80 @@ class AutoprocesClient:
 
     def get_access_token(self):
         return self.api_client.get_auth_headers()
+
+    def create_epic(self, node_data):
+        return {'status': 201, 'data': {'id': 'test-id'}}
+        """
+        Create an epic in OS2 Autoproces with the given node data.
+        :param node_data: The data to create the epic with, obtained from GitHub API.
+        """
+        # return {'id': 100, 'status': 200, 'data': 'test'}
+        url = f"{self.api_client.base_url}/processes"
+        headers = self.api_client.get_auth_headers()
+
+        # Extract the text value of the field with field.name = "Teknologi" if it exists
+        technologies = [
+            node.get("text") for node in node_data.get('fieldValues', {}).get('nodes', [])
+            if node.get("field", {}).get("name") == "Teknologi"
+        ]
+
+        # Extract description and truncate if necessary
+        description = node_data.get('body', '')
+        if len(description) > 140:
+            description = description[:137] + '...'
+
+        # Extract the run period from danish format
+        def switch(run_period):
+            mapping = {
+                "Løbende kørsel": "ONDEMAND",
+                "Engangskørsel": "ONCE",
+                "Dagligt": "DAILY",
+                "Ugentligt": "WEEKLY",
+                "Månedligt": "MONTHLY",
+                "Hvert kvartal": "QUATERLY",
+                "Årligt": "YEARLY"
+            }
+            return mapping.get(run_period)
+        runperiod = switch(node_data.get('runPeriod', 'ONDEMAND'))
+
+        # Create data payload
+        data = {
+            "title": node_data.get('content', {}).get('title'),
+            "visibility": "PUBLIC",
+            "shortDescription": description,
+            "phase": "OPERATION",
+            "status": "INPROGRESS",
+            "technologies": technologies,
+            "runPeriod": runperiod
+        }
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code == 201:
+            return {'status': 201, 'data': response.json()}
+        else:
+            logger.error(f"Failed to create epic: {response.status_code} - {response.text}")
+            return {'status': response.status_code, 'data': None}
+
+    def update_epic(self, os2_autoproces_id, changes):
+        return {'status': 200, 'data': 'test'}
+        """"
+        Update an epic in OS2 Autoproces with the given changes.
+        :param os2_autoproces_id: The ID of the epic to update.
+        :param changes: A list of changes to apply to the epic.
+                        Each change should be a dictionary with 'field_name' and 'to' keys.
+        """
+        url = f"{self.api_client.base_url}/processes"
+        headers = self.api_client.get_auth_headers()
+        data = {
+            "id": os2_autoproces_id
+        }
+
+        # TODO: Create map between field names and OS2 Autoproces field names
+        for change in changes:
+            data[change['field_name']] = change['to']
+
+        response = requests.patch(url, headers=headers, json=data)
+        if response.status_code == 200:
+            return {'status': 200, 'data': response.json()}
+        else:
+            logger.error(f"Failed to update epic: {response.status_code} - {response.text}")
+            return {'status': response.status_code, 'data': None}
