@@ -19,3 +19,11 @@ def getTechnology(technology, list):
         return None
     result = next((item for item in list if item.get("name").lower() == technology.lower()), None)
     return f"{OS2AUTOPROCES_API_URL}/technologies/{result['id']}" if result else None
+
+
+def getAutoprocesFieldName(github_field_name):
+    mapping = {
+        "Teknologi": "technologies",
+        "Køretid": "runPeriod"
+    }
+    return mapping.get(github_field_name) or None

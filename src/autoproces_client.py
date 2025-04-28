@@ -4,7 +4,7 @@ import requests
 from typing import Dict, Tuple
 
 from utils.api_requests import APIClient
-from autoproces_maps import getRunPeriod, getTechnology
+from autoproces_maps import getRunPeriod, getTechnology, getAutoprocesFieldName
 from datetime import timedelta
 
 logger = logging.getLogger(__name__)
@@ -126,23 +126,30 @@ class AutoprocesClient:
             return {'status': response.status_code, 'data': None}
 
     def update_epic(self, os2_autoproces_id, changes):
-        return {'status': 200, 'data': 'test'}
         """"
         Update an epic in OS2 Autoproces with the given changes.
         :param os2_autoproces_id: The ID of the epic to update.
         :param changes: A list of changes to apply to the epic.
                         Each change should be a dictionary with 'field_name' and 'to' keys.
         """
-        url = f"{self.api_client.base_url}/processes"
+        url = f"{self.api_client.base_url}/process/{os2_autoproces_id}"
         headers = self.api_client.get_auth_headers()
-        data = {
-            "id": os2_autoproces_id
-        }
+        data = {}
 
         # TODO: Create map between field names and OS2 Autoproces field names
         for change in changes:
-            data[change['field_name']] = change['to']
+            logger.info(f"Updating field with changes {change}")
+            field_name = getAutoprocesFieldName(change['field_name'])
 
+            if field_name is not None:
+                data[field_name] = change['to']
+
+                if field_name == "technologies":
+                    data[field_name] = [getTechnology(data[field_name], self.get_technologies()['data'])]
+                elif field_name == "runPeriod":
+                    data[field_name] = getRunPeriod(data[field_name])
+
+        return {'status': 200, 'data': data}
         response = requests.patch(url, headers=headers, json=data)
         if response.status_code == 200:
             return {'status': 200, 'data': response.json()}

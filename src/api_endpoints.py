@@ -82,10 +82,10 @@ def github_webhook():
                 if os2_autoproces_id and len(changes) > 0:
                     # for change in changes:
                     # TODO: Update epic in OS2 Autoproces with changes
-                    os2_client.update_epic(os2_autoproces_id, changes)
+                    response = os2_client.update_epic(os2_autoproces_id, changes)
                     logger.info(f"Updating epic with OS2 uid {os2_autoproces_id} in OS2 Autoproces with changes: {changes}")
 
-    return jsonify({"changes": changes or response, "os2uid": os2_autoproces_id}), 200
+    return jsonify({"response": response, "os2uid": os2_autoproces_id}), 200
 
 
 @api_endpoints.route('/healthz', methods=['GET'])
