@@ -4,6 +4,7 @@ import requests
 from typing import Dict, Tuple
 
 from utils.api_requests import APIClient
+from autoproces_maps import getRunPeriod, getTechnology
 from datetime import timedelta
 
 logger = logging.getLogger(__name__)
@@ -12,23 +13,25 @@ logger = logging.getLogger(__name__)
 class AutoprocesAPIClient(APIClient):
     _client_cache: Dict[Tuple[str, str, str, str], 'AutoprocesAPIClient'] = {}
 
-    def __init__(self, base_url, api_key):
+    def __init__(self, base_url, xapi_url, api_key):
         super().__init__(base_url)
         self.base_url = base_url
+        self.xapi_url = xapi_url
         self.api_key = api_key
         self.access_token = None
+        self.session_cookie = None
 
     @classmethod
-    def get_client(cls, base_url, api_key):
-        key = (base_url, api_key)
+    def get_client(cls, base_url, xapi_url, api_key):
+        key = (base_url, xapi_url, api_key)
         if key in cls._client_cache:
             return cls._client_cache[key]
-        client = cls(base_url, api_key)
+        client = cls(base_url, xapi_url, api_key)
         cls._client_cache[key] = client
         return client
 
     def request_access_token(self):
-        token_url = f"{self.base_url}/auth"
+        token_url = f"{self.xapi_url}/auth"
         headers = {
             "ApiKey": self.api_key,
             "Content-Type": "application/hal+json"
@@ -41,6 +44,7 @@ class AutoprocesAPIClient(APIClient):
             response.raise_for_status()
             self.access_token = response.headers.get('X-CSRF-TOKEN')
             self.access_token_expiry = time.time() + timedelta(hours=6).total_seconds()  # Assuming the token is valid for 6 hours
+            self.session_cookie = response.cookies.get('SESSION')  # Save the SESSION cookie
             return self.access_token
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to request access token: {e}")
@@ -55,32 +59,37 @@ class AutoprocesAPIClient(APIClient):
     def get_auth_headers(self):
         token = self.get_access_token()
         if token:
-            return {"X-CSRF-TOKEN": token}
+            headers = {"X-CSRF-TOKEN": token, "Content-Type": "application/hal+json"}
+            if self.session_cookie:
+                headers["Cookie"] = f"SESSION={self.session_cookie}"
+            return headers
         return None
 
 
 class AutoprocesClient:
-    def __init__(self, base_url, api_key):
-        self.api_client = AutoprocesAPIClient.get_client(base_url=base_url, api_key=api_key)
+    def __init__(self, base_url, xapi_url, api_key):
+        self.api_client = AutoprocesAPIClient.get_client(base_url=base_url, xapi_url=xapi_url, api_key=api_key)
+        self.technologies = None
 
     def get_access_token(self):
         return self.api_client.get_auth_headers()
 
     def create_epic(self, node_data):
-        return {'status': 201, 'data': {'id': 'test-id'}}
+        # return {'status': 201, 'data': {'id': 'test-id'}}
         """
         Create an epic in OS2 Autoproces with the given node data.
         :param node_data: The data to create the epic with, obtained from GitHub API.
         """
-        # return {'id': 100, 'status': 200, 'data': 'test'}
         url = f"{self.api_client.base_url}/processes"
         headers = self.api_client.get_auth_headers()
+        logger.info(f"Creating epic in OS2 Autoproces with node data: {node_data}")
 
-        # Extract the text value of the field with field.name = "Teknologi" if it exists
+        # Extract the text value of the field with field.name = "Teknologi" if it exists, otherwise use "Ukendt"
         technologies = [
-            node.get("text") for node in node_data.get('fieldValues', {}).get('nodes', [])
+            node.get("text", "Ukendt") for node in node_data.get('fieldValues', {}).get('nodes', [])
             if node.get("field", {}).get("name") == "Teknologi"
         ]
+        technologies = [getTechnology(tech, self.get_technologies()['data']) for tech in technologies]
 
         # Extract description and truncate if necessary
         description = node_data.get('body', '')
@@ -88,28 +97,26 @@ class AutoprocesClient:
             description = description[:137] + '...'
 
         # Extract the run period from danish format
-        def switch(run_period):
-            mapping = {
-                "Løbende kørsel": "ONDEMAND",
-                "Engangskørsel": "ONCE",
-                "Dagligt": "DAILY",
-                "Ugentligt": "WEEKLY",
-                "Månedligt": "MONTHLY",
-                "Hvert kvartal": "QUATERLY",
-                "Årligt": "YEARLY"
-            }
-            return mapping.get(run_period)
-        runperiod = switch(node_data.get('runPeriod', 'ONDEMAND'))
+        runperiod = getRunPeriod(node_data.get('runPeriod'))
 
         # Create data payload
         data = {
             "title": node_data.get('content', {}).get('title'),
-            "visibility": "PUBLIC",
+            "visibility": "PERSONAL",
             "shortDescription": description,
             "phase": "OPERATION",
             "status": "INPROGRESS",
             "technologies": technologies,
-            "runPeriod": runperiod
+            "runPeriod": runperiod,
+            "evaluatedLevelOfRoi": "NOT_SET",
+            "levelOfChange": "NOT_SET",
+            "levelOfDigitalInformation": "NOT_SET",
+            "levelOfProfessionalAssessment": "NOT_SET",
+            "levelOfQuality": "NOT_SET",
+            "levelOfRoutineWorkReduction": "NOT_SET",
+            "levelOfSpeed": "NOT_SET",
+            "levelOfStructuredInformation": "NOT_SET",
+            "levelOfUniformity": "NOT_SET"
         }
         response = requests.post(url, headers=headers, json=data)
         if response.status_code == 201:
@@ -141,4 +148,26 @@ class AutoprocesClient:
             return {'status': 200, 'data': response.json()}
         else:
             logger.error(f"Failed to update epic: {response.status_code} - {response.text}")
+            return {'status': response.status_code, 'data': None}
+
+    def get_technologies(self):
+        """
+        Get the list of technologies from OS2 Autoproces.
+        """
+        if self.technologies:
+            return {'status': 200, 'data': self.technologies}
+
+        url = f"{self.api_client.base_url}/technologies"
+        headers = self.api_client.get_auth_headers()
+
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            try:
+                self.technologies = response.json().get('_embedded', {}).get('technologies', [])
+                return {'status': 200, 'data': self.technologies}
+            except ValueError:
+                logger.error("Failed to parse JSON response")
+                return {'status': 500, 'data': None}
+        else:
+            logger.error(f"Failed to get technologies: {response.status_code} - {response.text}")
             return {'status': response.status_code, 'data': None}

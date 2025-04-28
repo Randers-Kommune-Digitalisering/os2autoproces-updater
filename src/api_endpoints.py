@@ -1,14 +1,15 @@
 import logging
 
 from flask import Blueprint, Response, request, jsonify
-from utils.config import OS2AUTOPROCES_API_KEY, OS2AUTOPROCES_API_URL, GITHUB_ACCESS_TOKEN, GITHUB_API_URL, GITHUB_PROJECT_ID, GITHUB_OS2AUTOPROCES_FIELD_ID
+from utils.config import OS2AUTOPROCES_API_KEY, OS2AUTOPROCES_API_URL, OS2AUTOPROCES_XAPI_URL, GITHUB_ACCESS_TOKEN, GITHUB_API_URL, GITHUB_PROJECT_ID, GITHUB_OS2AUTOPROCES_FIELD_ID
 from github_client import GithubClient
 from autoproces_client import AutoprocesClient
+from autoproces_maps import getTechnology
 
 logger = logging.getLogger(__name__)
 api_endpoints = Blueprint('api-endpoints', __name__, url_prefix='/api')
 
-os2_client = AutoprocesClient(base_url=OS2AUTOPROCES_API_URL, api_key=OS2AUTOPROCES_API_KEY)
+os2_client = AutoprocesClient(base_url=OS2AUTOPROCES_API_URL, xapi_url=OS2AUTOPROCES_XAPI_URL, api_key=OS2AUTOPROCES_API_KEY)
 github_client = GithubClient(base_url=GITHUB_API_URL, access_token=GITHUB_ACCESS_TOKEN)
 
 
@@ -50,8 +51,8 @@ def github_webhook():
                 field_values = payload['changes']['field_value']
                 if not isinstance(field_values, list):
                     field_values = [field_values]
-                for field in field_values:
 
+                for field in field_values:
                     # Check if newly deployed, unless OS2 Autoproces ID is already set
                     if os2_autoproces_id is None and field.get('field_name') == 'Fase':
                         if field.get('to').get('name'):
@@ -68,8 +69,8 @@ def github_webhook():
                                 # Update field value in GitHub after creating epic
                                 github_client.update_field_value(GITHUB_PROJECT_ID, node_id, GITHUB_OS2AUTOPROCES_FIELD_ID, os2_autoproces_id)
                                 logger.info(f"Epic {node_id} created OS2 Autoproces and ID updated in GitHub")
-                    else:
 
+                    else:
                         # Store other changes made to epic
                         changes.append({
                             'field_name': field.get('field_name'),
@@ -84,7 +85,7 @@ def github_webhook():
                     os2_client.update_epic(os2_autoproces_id, changes)
                     logger.info(f"Updating epic with OS2 uid {os2_autoproces_id} in OS2 Autoproces with changes: {changes}")
 
-    return jsonify({"changes": changes, "os2uid": os2_autoproces_id}), 200
+    return jsonify({"changes": changes or response, "os2uid": os2_autoproces_id}), 200
 
 
 @api_endpoints.route('/healthz', methods=['GET'])
@@ -92,10 +93,30 @@ def health_check():
     return jsonify({'status': 'ok'}), 200
 
 
-# @api_endpoints.route('/autoproces/token', methods=['GET'])
-# def autoproces():
-#     token = os2_client.get_access_token()
-#     return jsonify({'status': 'ok', 'token': token}), 200
+@api_endpoints.route('/technologies', methods=['GET'])
+def get_technologies():
+    technologies = os2_client.get_technologies()
+    if technologies['status'] == 200:
+        return jsonify(technologies), 200
+    else:
+        return jsonify({'error': 'Failed to fetch technologies'}), 500
+
+
+@api_endpoints.route('/technologies/<string:technology>', methods=['GET'])
+def get_technology(technology):
+    technologies = os2_client.get_technologies()
+
+    if technologies['status'] == 200:
+        result = getTechnology(technology, technologies['data'])
+        return jsonify(result), 200
+    else:
+        return jsonify({'error': 'Failed to fetch technologies'}), 500
+
+
+@api_endpoints.route('/autoproces/headers', methods=['GET'])
+def autoproces():
+    headers = os2_client.get_access_token()
+    return jsonify({'status': 'ok', 'headers': headers}), 200
 
 
 # @api_endpoints.route('/github/user', methods=['GET'])
