@@ -101,7 +101,7 @@ class AutoprocesClient:
         # Create data payload
         data = {
             "title": node_data.get('content', {}).get('title'),
-            "visibility": "PERSONAL",
+            "visibility": "PUBLIC",
             "shortDescription": description,
             "phase": "OPERATION",
             "status": "INPROGRESS",
