@@ -149,6 +149,9 @@ class AutoprocesClient:
                     data[field_name] = [getTechnology(data[field_name], self.get_technologies()['data'])]
                 elif field_name == "runPeriod":
                     data[field_name] = getRunPeriod(data[field_name])
+                elif field_name == "shortDescription":
+                    if len(data[field_name]) > 140:
+                        data[field_name] = data[field_name][:137] + '...'
 
         # return {'status': 200, 'data': data}
         response = requests.patch(url, headers=headers, json=data)
