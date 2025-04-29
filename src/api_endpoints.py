@@ -35,7 +35,7 @@ def github_webhook():
             # Get project item data from GitHub
             epic = github_client.get_issue_from_id(issue_id)
             if epic['status'] != 200:
-                logger.error(f"Failed to fetch epic data for issue ID {issue_id}: {epic['error']}")
+                logger.error(f"Failed to fetch epic data for issue ID {issue_id}: {epic.get('error', 'Unknown error')}")
                 return Response('Failed to fetch epic data', status=500)
 
             # Check if the epic is marked as deployed - true if epic has an OS2 Autoproces ID
@@ -66,7 +66,7 @@ def github_webhook():
             # Get issue data from GitHub
             epic = github_client.get_issue_from_node(node_id)
             if epic['status'] != 200:
-                logger.error(f"Failed to fetch epic data for project node ID {node_id}: {epic['error']}")
+                logger.error(f"Failed to fetch epic data for project node ID {node_id}: {epic.get('error', 'Unknown error')}")
                 return Response('Failed to fetch epic data', status=500)
 
             # Check if the epic is marked as deployed - true if epic has an OS2 Autoproces ID
