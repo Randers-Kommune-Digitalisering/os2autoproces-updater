@@ -25,7 +25,6 @@ def github_webhook():
     # Updated project epic
     os2_autoproces_id = None
     changes = []
-    response = None
 
     # Check if update is issue (i.e. updated description)
     if payload.get('issue'):
@@ -120,7 +119,11 @@ def github_webhook():
     # Update in OS2 Autoproces with changes
     if len(changes) > 0:
         response = os2_client.update_epic(os2_autoproces_id, changes)
-        logger.info(f"Updating epic with OS2 uid {os2_autoproces_id} in OS2 Autoproces with changes: {changes}")
+        if response['status'] == 200:
+            logger.info(f"Epic {os2_autoproces_id} updated in OS2 Autoproces with changes: {changes}")
+        else:
+            logger.error(f"Failed to update epic in OS2 Autoproces: {response.get('errors')}")
+            return Response('Failed to update epic in OS2 Autoproces', status=500)
 
     return jsonify({"os2uid": os2_autoproces_id or None, "changes": changes}), 200
 
@@ -150,26 +153,26 @@ def get_technology(technology):
         return jsonify({'error': 'Failed to fetch technologies'}), 500
 
 
-@api_endpoints.route('/autoproces/headers', methods=['GET'])
-def autoproces():
-    headers = os2_client.get_access_token()
-    return jsonify({'status': 'ok', 'headers': headers}), 200
+# @api_endpoints.route('/autoproces/headers', methods=['GET'])
+# def autoproces():
+#     headers = os2_client.get_access_token()
+#     return jsonify({'status': 'ok', 'headers': headers}), 200
 
 
-@api_endpoints.route('/github/epic/<string:node_id>', methods=['GET'])
-def get_project_issue(node_id):
-    result = github_client.get_issue_from_node(node_id)
-    if result['status'] == 200:
-        return jsonify(result['data']), 200
-    elif result['status'] == 404:
-        return jsonify({'error': 'Epic not found'}), 404
-    else:
-        return jsonify({'error': 'Failed to fetch epic'}), 500
+# @api_endpoints.route('/github/epic/<string:node_id>', methods=['GET'])
+# def get_project_issue(node_id):
+#     result = github_client.get_issue_from_node(node_id)
+#     if result['status'] == 200:
+#         return jsonify(result['data']), 200
+#     elif result['status'] == 404:
+#         return jsonify({'error': 'Epic not found'}), 404
+#     else:
+#         return jsonify({'error': 'Failed to fetch epic'}), 500
 
 
 # @api_endpoints.route('/github/issue/<string:issue_id>', methods=['GET'])
 # def github_issue(issue_id):
-#     result = github_client.get_issue_from_node(issue_id)
+#     result = github_client.get_issue_from_id(issue_id)
 #     if result['status'] == 200:
 #         return jsonify(result['data']), 200
 #     elif result['status'] == 404:
