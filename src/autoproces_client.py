@@ -75,7 +75,6 @@ class AutoprocesClient:
         return self.api_client.get_auth_headers()
 
     def create_epic(self, node_data):
-        # return {'status': 201, 'data': {'id': 'test-id'}}
         """
         Create an epic in OS2 Autoproces with the given node data.
         :param node_data: The data to create the epic with, obtained from GitHub API.
@@ -116,7 +115,8 @@ class AutoprocesClient:
             "levelOfRoutineWorkReduction": "NOT_SET",
             "levelOfSpeed": "NOT_SET",
             "levelOfStructuredInformation": "NOT_SET",
-            "levelOfUniformity": "NOT_SET"
+            "levelOfUniformity": "NOT_SET",
+            "codeRepositoryUrl": node_data.get('content', {}).get('repository', {}).get('url'),
         }
         response = requests.post(url, headers=headers, json=data)
         if response.status_code == 201:
@@ -132,13 +132,12 @@ class AutoprocesClient:
         :param changes: A list of changes to apply to the epic.
                         Each change should be a dictionary with 'field_name' and 'to' keys.
         """
-        url = f"{self.api_client.base_url}/process/{os2_autoproces_id}"
+        url = f"{self.api_client.base_url}/processes/{os2_autoproces_id}"
         headers = self.api_client.get_auth_headers()
         data = {}
 
         # TODO: Create map between field names and OS2 Autoproces field names
         for change in changes:
-            logger.info(f"Updating field with changes {change}")
             field_name = getAutoprocesFieldName(change['field_name'])
 
             if field_name is not None:
@@ -149,10 +148,10 @@ class AutoprocesClient:
                 elif field_name == "runPeriod":
                     data[field_name] = getRunPeriod(data[field_name])
 
-        return {'status': 200, 'data': data}
+        # return {'status': 200, 'data': data}
         response = requests.patch(url, headers=headers, json=data)
         if response.status_code == 200:
-            return {'status': 200, 'data': response.json()}
+            return {'status': 200, 'response': response.json(), "data": data}
         else:
             logger.error(f"Failed to update epic: {response.status_code} - {response.text}")
             return {'status': response.status_code, 'data': None}

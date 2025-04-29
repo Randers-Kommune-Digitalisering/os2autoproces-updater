@@ -24,6 +24,6 @@ def getTechnology(technology, list):
 def getAutoprocesFieldName(github_field_name):
     mapping = {
         "Teknologi": "technologies",
-        "Køretid": "runPeriod"
+        "Skedulering": "runPeriod"
     }
     return mapping.get(github_field_name) or None
