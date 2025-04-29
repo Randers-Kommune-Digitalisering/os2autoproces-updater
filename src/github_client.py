@@ -100,7 +100,7 @@ class GithubClient:
             return {'status': 404, 'data': None}
         else:
             logger.error(f"Failed to fetch project item: {response.status_code} - {response.text}")
-            return {'status': response.status_code, 'data': None}
+            return {'status': 500, 'data': None}
 
     def get_issue_from_node(self, node_id):
         query = """
@@ -173,7 +173,7 @@ class GithubClient:
             return {'status': 404, 'data': None}
         else:
             logger.error(f"Failed to fetch issue: {response.status_code} - {response.text}")
-            return {'status': response.status_code, 'data': None}
+            return {'status': 500, 'data': None}
 
     def update_field_value(self, project_id, node_id, field_id, value):
         logger.info(f"Updating field value for node {node_id} in project {project_id} with field {field_id} to {value}")
@@ -204,4 +204,4 @@ class GithubClient:
             return {'status': 200, 'data': response.json()}
         else:
             logger.error(f"Failed to update field value: {response.status_code} - {response.text}")
-            return {'status': response.status_code, 'data': None}
+            return {'status': 500, 'data': None}
