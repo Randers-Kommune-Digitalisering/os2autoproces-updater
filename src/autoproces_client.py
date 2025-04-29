@@ -81,11 +81,11 @@ class AutoprocesClient:
         """
         url = f"{self.api_client.base_url}/processes"
         headers = self.api_client.get_auth_headers()
-        logger.info(f"Creating epic in OS2 Autoproces with node data: {node_data}")
+        logger.info("Creating new epic in OS2 Autoproces")
 
         # Extract the text value of the field with field.name = "Teknologi" if it exists, otherwise use "Ukendt"
         technologies = [
-            node.get("text", "Ukendt") for node in node_data.get('fieldValues', {}).get('nodes', [])
+            node.get("name", "Ukendt") for node in node_data.get('fieldValues', {}).get('nodes', [])
             if node.get("field", {}).get("name") == "Teknologi"
         ]
         technologies = [getTechnology(tech, self.get_technologies()['data']) for tech in technologies]
@@ -118,6 +118,9 @@ class AutoprocesClient:
             "levelOfUniformity": "NOT_SET",
             "codeRepositoryUrl": node_data.get('content', {}).get('repository', {}).get('url'),
         }
+
+        # data['id'] = 460
+        # return {'status': 201, 'data': data}
         response = requests.post(url, headers=headers, json=data)
         if response.status_code == 201:
             return {'status': 201, 'data': response.json()}
@@ -136,7 +139,6 @@ class AutoprocesClient:
         headers = self.api_client.get_auth_headers()
         data = {}
 
-        # TODO: Create map between field names and OS2 Autoproces field names
         for change in changes:
             field_name = getAutoprocesFieldName(change['field_name'])
 

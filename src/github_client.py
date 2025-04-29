@@ -37,6 +37,71 @@ class GithubClient:
     def __init__(self, base_url, access_token):
         self.api_client = GithubAPIClient.get_client(base_url, access_token)
 
+    def get_issue_from_id(self, issue_id):
+        query = """
+        query($node_id: ID!) {
+            node(id: $node_id) {
+                ... on Issue {
+                    id
+                    title
+                    assignees(first: 10) {
+                        nodes {
+                            login
+                        }
+                    }
+                    projectItems(first: 100) {
+                        nodes {
+                            id
+                            fieldValues(first: 100) {
+                                nodes {
+                                    ... on ProjectV2ItemFieldTextValue {
+                                        text
+                                        field {
+                                            ... on ProjectV2FieldCommon {
+                                                id
+                                                name
+                                            }
+                                        }
+                                    }
+                                    ... on ProjectV2ItemFieldDateValue {
+                                        date
+                                        field {
+                                            ... on ProjectV2FieldCommon {
+                                                id
+                                                name
+                                            }
+                                        }
+                                    }
+                                    ... on ProjectV2ItemFieldSingleSelectValue {
+                                        name
+                                        field {
+                                            ... on ProjectV2FieldCommon {
+                                                id
+                                                name
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """
+        variables = {"node_id": issue_id}
+        url = f"{self.api_client.url}/graphql"
+        headers = self.api_client.get_auth_headers()
+        response = requests.post(url, headers=headers, json={"query": query, "variables": variables})
+        if response.status_code == 200:
+            return {'status': 200, 'data': response.json()}
+        elif response.status_code == 404:
+            logger.error("Project item not found")
+            return {'status': 404, 'data': None}
+        else:
+            logger.error(f"Failed to fetch project item: {response.status_code} - {response.text}")
+            return {'status': response.status_code, 'data': None}
+
     def get_issue_from_node(self, node_id):
         query = """
         query($node_id: ID!) {
@@ -126,11 +191,16 @@ class GithubClient:
             }
         }
         """
-        variables = {"project_id": project_id, "node_id": node_id, "field_id": field_id, "value": value}
+        variables = {
+            "project_id": project_id,
+            "node_id": node_id,
+            "field_id": field_id,
+            "value": str(value)
+        }
         url = f"{self.api_client.url}/graphql"
         headers = self.api_client.get_auth_headers()
         response = requests.post(url, headers=headers, json={"query": query, "variables": variables})
-        if response.status_code == 200:
+        if response.json().get('errors'):
             return {'status': 200, 'data': response.json()}
         else:
             logger.error(f"Failed to update field value: {response.status_code} - {response.text}")

@@ -1,4 +1,7 @@
+import logging
 from utils.config import OS2AUTOPROCES_API_URL
+
+logger = logging.getLogger(__name__)
 
 
 def getRunPeriod(run_period):
@@ -15,7 +18,9 @@ def getRunPeriod(run_period):
 
 
 def getTechnology(technology, list):
+    logger.info('Mapping technology: %s', technology)
     if not list:
+        logger.error('Technology list is empty or None')
         return None
     result = next((item for item in list if item.get("name").lower() == technology.lower()), None)
     return f"{OS2AUTOPROCES_API_URL}/technologies/{result['id']}" if result else None
@@ -24,6 +29,8 @@ def getTechnology(technology, list):
 def getAutoprocesFieldName(github_field_name):
     mapping = {
         "Teknologi": "technologies",
-        "Skedulering": "runPeriod"
+        "Skedulering": "runPeriod",
+        "body": "description",
+        "title": "title"
     }
     return mapping.get(github_field_name) or None

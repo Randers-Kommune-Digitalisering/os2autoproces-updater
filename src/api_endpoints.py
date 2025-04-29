@@ -25,26 +25,59 @@ def github_webhook():
     # Updated project epic
     os2_autoproces_id = None
     changes = []
+    response = None
 
-    if payload.get('projects_v2_item'):
+    # Check if update is issue (i.e. updated description)
+    if payload.get('issue'):
+        if payload['action'] == 'edited':
+            logger.info(f"Received issue update: {payload['action']}")
+            issue_id = payload['issue']['node_id']
+
+            # Get project item data from GitHub
+            epic = github_client.get_issue_from_id(issue_id)
+            if epic['status'] != 200:
+                logger.error(f"Failed to fetch epic data for issue ID {issue_id}: {epic['error']}")
+                return Response('Failed to fetch epic data', status=500)
+
+            # Check if the epic is marked as deployed - true if epic has an OS2 Autoproces ID
+            project_items = epic.get('data', {}).get('data', {}).get('node', {}).get('projectItems', {}).get('nodes', [])
+            for project_item in project_items:
+                for field in project_item.get('fieldValues', {}).get('nodes', []):
+
+                    if field.get('field', {}).get('name') == 'OS2 Autoproces ID':
+                        os2_autoproces_id = field.get('text')
+                        if os2_autoproces_id:  # OS2 Autoproces ID is already set
+                            logger.info(f"Epic with issue ID {issue_id} already exists in OS2 Autoproces with ID {os2_autoproces_id}")
+
+            # Store changes made to epic
+            if os2_autoproces_id:
+                for key in payload['changes'].keys():
+                    if payload['changes'][key].get('from', None):
+                        changes.append({
+                            'field_name': key,
+                            'from': payload['changes'][key].get('from'),
+                            'to': payload['issue'].get(key, None)
+                        })
+
+    # Check if update is project item (i.e. updated field value)
+    elif payload.get('projects_v2_item'):
         if payload['action'] == 'edited':
             node_id = payload['projects_v2_item']['node_id']
 
             # Get issue data from GitHub
             epic = github_client.get_issue_from_node(node_id)
             if epic['status'] != 200:
-                logger.error(f"Failed to fetch epic data for node_id {node_id}: {epic['error']}")
+                logger.error(f"Failed to fetch epic data for project node ID {node_id}: {epic['error']}")
                 return Response('Failed to fetch epic data', status=500)
 
-            # Check if the epic is marked as deployed
+            # Check if the epic is marked as deployed - true if epic has an OS2 Autoproces ID
             if epic.get('data', {}).get('data', {}).get('node', {}).get('fieldValues', {}).get('nodes'):
                 for field in epic['data']['data']['node']['fieldValues']['nodes']:
 
-                    # Check if epic has an OS2 Autoproces ID
                     if field.get('field', {}).get('name') == 'OS2 Autoproces ID':
                         os2_autoproces_id = field.get('text')
                         if os2_autoproces_id:  # OS2 Autoproces ID is already set
-                            logger.info(f"Epic {node_id} already exists in OS2 Autoproces with ID {os2_autoproces_id}")
+                            logger.info(f"Epic with project node ID {node_id} already exists in OS2 Autoproces with ID {os2_autoproces_id}")
 
             # Check new changes to field values
             if payload['changes'].get('field_value'):
@@ -62,15 +95,20 @@ def github_webhook():
                                 response = os2_client.create_epic(epic['data']['data']['node'])
                                 if response['status'] == 201:
                                     os2_autoproces_id = response['data'].get('id')
+                                    logger.info(f"Epic {node_id} created OS2 Autoproces")
                                 else:
-                                    logger.error(f"Failed to create epic in OS2 Autoproces: {response['error']}")
+                                    logger.error(f"Failed to create epic in OS2 Autoproces: {response.get('errors')}")
                                     return Response('Failed to create epic in OS2 Autoproces', status=500)
 
                                 # Update field value in GitHub after creating epic
-                                github_client.update_field_value(GITHUB_PROJECT_ID, node_id, GITHUB_OS2AUTOPROCES_FIELD_ID, os2_autoproces_id)
-                                logger.info(f"Epic {node_id} created OS2 Autoproces and ID updated in GitHub")
+                                response = github_client.update_field_value(GITHUB_PROJECT_ID, node_id, GITHUB_OS2AUTOPROCES_FIELD_ID, os2_autoproces_id)
+                                if response['status'] == 200:
+                                    logger.info(f"Epic {node_id} updated with OS2 Autoproces ID {os2_autoproces_id} in GitHub")
+                                else:
+                                    logger.error(f"Failed to update field value in GitHub: {response.get('errors')}")
+                                    return Response('Failed to update field value in GitHub', status=500)
 
-                    else:
+                    elif os2_autoproces_id:
                         # Store other changes made to epic
                         changes.append({
                             'field_name': field.get('field_name'),
@@ -79,12 +117,12 @@ def github_webhook():
                             'to': field.get('to').get('name', field.get('to').get('text')) if field.get('to') else None
                         })
 
-                if os2_autoproces_id and len(changes) > 0:
-                    # for change in changes:
-                    response = os2_client.update_epic(os2_autoproces_id, changes)
-                    logger.info(f"Updating epic with OS2 uid {os2_autoproces_id} in OS2 Autoproces with changes: {changes}")
+    # Update in OS2 Autoproces with changes
+    if len(changes) > 0:
+        response = os2_client.update_epic(os2_autoproces_id, changes)
+        logger.info(f"Updating epic with OS2 uid {os2_autoproces_id} in OS2 Autoproces with changes: {changes}")
 
-    return jsonify({"response": response, "os2uid": os2_autoproces_id}), 200
+    return jsonify({"os2uid": os2_autoproces_id or None, "changes": changes}), 200
 
 
 @api_endpoints.route('/healthz', methods=['GET'])
