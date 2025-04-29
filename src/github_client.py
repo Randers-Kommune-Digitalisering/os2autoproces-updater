@@ -201,7 +201,7 @@ class GithubClient:
         headers = self.api_client.get_auth_headers()
         response = requests.post(url, headers=headers, json={"query": query, "variables": variables})
         if response.json().get('errors'):
-            return {'status': 200, 'data': response.json()}
-        else:
             logger.error(f"Failed to update field value: {response.status_code} - {response.text}")
             return {'status': 500, 'data': None}
+        else:
+            return {'status': 200, 'data': response.json()}
