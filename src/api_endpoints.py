@@ -84,6 +84,7 @@ def github_webhook():
                 if not isinstance(field_values, list):
                     field_values = [field_values]
 
+                is_deployed = os2_autoproces_id is not None
                 for field in field_values:
                     # Check if newly deployed, unless OS2 Autoproces ID is already set
                     if os2_autoproces_id is None and field.get('field_name') == 'Fase':
@@ -107,13 +108,13 @@ def github_webhook():
                                     logger.error(f"Failed to update field value in GitHub: {response.get('errors')}")
                                     return Response('Failed to update field value in GitHub', status=500)
 
-                    elif os2_autoproces_id:
+                    elif is_deployed is True:
                         # Store other changes made to epic
                         changes.append({
                             'field_name': field.get('field_name'),
                             'field_id': field.get('field_node_id'),
-                            'from': field.get('from').get('name', field.get('from').get('text')) if field.get('from') else None,
-                            'to': field.get('to').get('name', field.get('to').get('text')) if field.get('to') else None
+                            'from': field.get('from').get('name', field.get('from').get('text')) if isinstance(field.get('from'), dict) else field.get('from') if isinstance(field.get('from'), str) else None,
+                            'to': field.get('to').get('name', field.get('to').get('text')) if isinstance(field.get('to'), dict) else field.get('to') if isinstance(field.get('to'), str) else None
                         })
 
     # Update in OS2 Autoproces with changes
