@@ -153,7 +153,9 @@ class AutoprocesClient:
                     if len(data[field_name]) > 140:
                         data[field_name] = data[field_name][:137] + '...'
 
-        # return {'status': 200, 'data': data}
+        if data == {}:
+            logger.info("No changes to update")
+            return {'status': 200, 'data': None}
         response = requests.patch(url, headers=headers, json=data)
         if response.status_code == 200:
             return {'status': 200, 'response': response.json(), "data": data}

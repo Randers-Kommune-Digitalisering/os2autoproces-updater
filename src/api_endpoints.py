@@ -121,7 +121,8 @@ def github_webhook():
     if len(changes) > 0:
         response = os2_client.update_epic(os2_autoproces_id, changes)
         if response['status'] == 200:
-            logger.info(f"Epic {os2_autoproces_id} updated in OS2 Autoproces with changes: {changes}")
+            if response.get('data') and len(response.get('data')) > 0:
+                logger.info(f"Epic {os2_autoproces_id} updated in OS2 Autoproces with changes: {response.get('data')}")
         else:
             logger.error(f"Failed to update epic in OS2 Autoproces: {response.get('errors')}")
             return Response('Failed to update epic in OS2 Autoproces', status=500)
