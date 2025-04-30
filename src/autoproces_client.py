@@ -170,7 +170,7 @@ class AutoprocesClient:
         if self.technologies:
             return {'status': 200, 'data': self.technologies}
 
-        url = f"{self.api_client.base_url}/technologies"
+        url = f"{self.api_client.base_url}/technologies?size=1000"
         headers = self.api_client.get_auth_headers()
 
         response = requests.get(url, headers=headers)
