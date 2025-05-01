@@ -156,7 +156,7 @@ class AutoprocesClient:
                 data[field_name] = change['to']
 
                 if field_name == "technologies":
-                    data[field_name] = [getTechnology(data[field_name], self.get_technologies()['data'])]
+                    data[field_name] = [getTechnology(data[field_name] or "Ukendt", self.get_technologies()['data'])]
                 elif field_name == "runPeriod":
                     data[field_name] = getRunPeriod(data[field_name])
                 elif field_name == "longDescription":
