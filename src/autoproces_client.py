@@ -87,9 +87,9 @@ class AutoprocesClient:
 
         # Extract the text value of the field with field.name = "Teknologi" if it exists, otherwise use "Ukendt"
         technologies = [
-            node.get("name", "Ukendt") for node in node_data.get('fieldValues', {}).get('nodes', [])
+            node.get("value") for node in node_data.get('fieldValues', {}).get('nodes', [])
             if node.get("field", {}).get("name") == "Teknologi"
-        ]
+        ] or ["Ukendt"]
         technologies = [getTechnology(tech, self.get_technologies()['data']) for tech in technologies]
 
         # Extract description and and generate a short description using OpenAI API
