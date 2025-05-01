@@ -27,5 +27,5 @@ GITHUB_ORG = os.getenv('GITHUB_ORG').strip() if os.getenv('GITHUB_ORG') else Non
 GITHUB_OS2AUTOPROCES_FIELD_ID = os.getenv('GITHUB_OS2AUTOPROCES_FIELD_ID').strip() if os.getenv('GITHUB_OS2AUTOPROCES_FIELD_ID') else None
 
 AZURE_OPENAI_API_KEY = os.getenv('AZURE_OPENAI_API_KEY', 'test_api_key').strip()
-AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT').strip() if os.getenv('AZURE_OPENAI_ENDPOINT') else None
+AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT', 'test_api_url').strip()
 AZURE_DEPLOYMENT_NAME = os.getenv('AZURE_DEPLOYMENT_NAME').strip() if os.getenv('AZURE_DEPLOYMENT_NAME') else None
