@@ -100,9 +100,14 @@ class AutoprocesClient:
         # Extract the run period from danish format
         runperiod = getRunPeriod(node_data.get('runPeriod'))
 
+        # Extract the title and truncate it if necessary
+        title = node_data.get('content', {}).get('title')
+        if len(title) > 65:
+            title = title[:62] + '...'
+
         # Create data payload
         data = {
-            "title": node_data.get('content', {}).get('title'),
+            "title": title,
             "visibility": "PUBLIC",
             "shortDescription": short_description,
             "longDescription": description,
@@ -156,6 +161,9 @@ class AutoprocesClient:
                     if len(data[field_name]) > 10000:
                         data[field_name] = data[field_name][:9997] + '...'
                     data["shortDescription"] = create_shortDescription(data[field_name])  # Generate short description
+                elif field_name == "title":
+                    if len(data[field_name]) > 65:
+                        data[field_name] = data[field_name][:62] + '...'
 
         if data == {}:
             logger.info("No changes to update")
