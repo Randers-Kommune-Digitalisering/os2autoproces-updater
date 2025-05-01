@@ -6,6 +6,7 @@ from typing import Dict, Tuple
 from utils.api_requests import APIClient
 from openai_client import create_shortDescription
 from autoproces_maps import getRunPeriod, getTechnology, getAutoprocesFieldName
+from utils.config import CONTACT_EMAIL
 from datetime import timedelta
 
 logger = logging.getLogger(__name__)
@@ -125,6 +126,7 @@ class AutoprocesClient:
             "levelOfStructuredInformation": "NOT_SET",
             "levelOfUniformity": "NOT_SET",
             "codeRepositoryUrl": node_data.get('content', {}).get('repository', {}).get('url'),
+            "otherContactEmail": CONTACT_EMAIL
         }
 
         # data['id'] = 460
