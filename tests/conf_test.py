@@ -4,6 +4,7 @@ from main import create_app
 
 # Set required environment variables for Azure OpenAI
 os.environ["AZURE_OPENAI_API_KEY"] = os.getenv("AZURE_OPENAI_API_KEY", "test_api_key")
+os.environ["AZURE_OPENAI_ENDPOINT"] = os.getenv("AZURE_OPENAI_ENDPOINT", "test_api_url")
 
 
 @pytest.fixture()
