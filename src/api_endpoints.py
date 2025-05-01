@@ -5,6 +5,7 @@ from utils.config import OS2AUTOPROCES_API_KEY, OS2AUTOPROCES_API_URL, OS2AUTOPR
 from github_client import GithubClient
 from autoproces_client import AutoprocesClient
 from autoproces_maps import getTechnology
+# from openai_client import create_shortDescription
 
 logger = logging.getLogger(__name__)
 api_endpoints = Blueprint('api-endpoints', __name__, url_prefix='/api')
@@ -154,6 +155,19 @@ def get_technology(technology):
     else:
         return jsonify({'error': 'Failed to fetch technologies'}), 500
 
+
+# @api_endpoints.route('/shortDescription', methods=['POST'])
+# def short_description():
+#     data = request.get_json()
+#     if not data or 'message' not in data:
+#         return jsonify({'error': 'Invalid input'}), 400
+
+#     message = data['message']
+#     short_description = create_shortDescription(message)
+#     if short_description:
+#         return jsonify({'shortDescription': short_description}), 200
+#     else:
+#         return jsonify({'error': 'Failed to generate short description'}), 500
 
 # @api_endpoints.route('/autoproces/headers', methods=['GET'])
 # def autoproces():

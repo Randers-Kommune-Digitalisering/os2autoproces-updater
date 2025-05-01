@@ -4,6 +4,7 @@ import requests
 from typing import Dict, Tuple
 
 from utils.api_requests import APIClient
+from openai_client import create_shortDescription
 from autoproces_maps import getRunPeriod, getTechnology, getAutoprocesFieldName
 from datetime import timedelta
 
@@ -90,10 +91,11 @@ class AutoprocesClient:
         ]
         technologies = [getTechnology(tech, self.get_technologies()['data']) for tech in technologies]
 
-        # Extract description and truncate if necessary
-        description = node_data.get('body', '')
-        if len(description) > 140:
-            description = description[:137] + '...'
+        # Extract description and and generate a short description using OpenAI API
+        description = node_data.get('content', {}).get('body', '')
+        if len(description) > 10000:
+            description = description[:9997] + '...'
+        short_description = create_shortDescription(description)
 
         # Extract the run period from danish format
         runperiod = getRunPeriod(node_data.get('runPeriod'))
@@ -102,7 +104,8 @@ class AutoprocesClient:
         data = {
             "title": node_data.get('content', {}).get('title'),
             "visibility": "PUBLIC",
-            "shortDescription": description,
+            "shortDescription": short_description,
+            "longDescription": description,
             "phase": "OPERATION",
             "status": "INPROGRESS",
             "technologies": technologies,
@@ -149,9 +152,10 @@ class AutoprocesClient:
                     data[field_name] = [getTechnology(data[field_name], self.get_technologies()['data'])]
                 elif field_name == "runPeriod":
                     data[field_name] = getRunPeriod(data[field_name])
-                elif field_name == "shortDescription":
-                    if len(data[field_name]) > 140:
-                        data[field_name] = data[field_name][:137] + '...'
+                elif field_name == "longDescription":
+                    if len(data[field_name]) > 10000:
+                        data[field_name] = data[field_name][:9997] + '...'
+                    data["shortDescription"] = create_shortDescription(data[field_name])  # Generate short description
 
         if data == {}:
             logger.info("No changes to update")
