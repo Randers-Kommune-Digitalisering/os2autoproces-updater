@@ -1,10 +1,15 @@
 import pytest
+import os
 
 # from unittest.mock import patch
 # from flask import json
 
 from main import create_app
 from api_endpoints import api_endpoints
+
+# Ensure required environment variables are set for Azure OpenAI
+os.environ["AZURE_OPENAI_API_KEY"] = os.getenv("AZURE_OPENAI_API_KEY", "test_api_key")
+os.environ["AZURE_OPENAI_ENDPOINT"] = os.getenv("AZURE_OPENAI_ENDPOINT", "test_api_url")
 
 
 @pytest.fixture()

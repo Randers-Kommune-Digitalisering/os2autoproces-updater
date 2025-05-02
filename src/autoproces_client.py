@@ -4,7 +4,9 @@ import requests
 from typing import Dict, Tuple
 
 from utils.api_requests import APIClient
+from openai_client import create_shortDescription
 from autoproces_maps import getRunPeriod, getTechnology, getAutoprocesFieldName
+from utils.config import CONTACT_EMAIL
 from datetime import timedelta
 
 logger = logging.getLogger(__name__)
@@ -85,24 +87,31 @@ class AutoprocesClient:
 
         # Extract the text value of the field with field.name = "Teknologi" if it exists, otherwise use "Ukendt"
         technologies = [
-            node.get("name", "Ukendt") for node in node_data.get('fieldValues', {}).get('nodes', [])
+            node.get("value") for node in node_data.get('fieldValues', {}).get('nodes', [])
             if node.get("field", {}).get("name") == "Teknologi"
-        ]
+        ] or ["Ukendt"]
         technologies = [getTechnology(tech, self.get_technologies()['data']) for tech in technologies]
 
-        # Extract description and truncate if necessary
-        description = node_data.get('body', '')
-        if len(description) > 140:
-            description = description[:137] + '...'
+        # Extract description and and generate a short description using OpenAI API
+        description = node_data.get('content', {}).get('body', '')
+        if len(description) > 10000:
+            description = description[:9997] + '...'
+        short_description = create_shortDescription(description)
 
         # Extract the run period from danish format
         runperiod = getRunPeriod(node_data.get('runPeriod'))
 
+        # Extract the title and truncate it if necessary
+        title = node_data.get('content', {}).get('title')
+        if len(title) > 65:
+            title = title[:62] + '...'
+
         # Create data payload
         data = {
-            "title": node_data.get('content', {}).get('title'),
+            "title": title,
             "visibility": "PUBLIC",
-            "shortDescription": description,
+            "shortDescription": short_description,
+            "longDescription": description,
             "phase": "OPERATION",
             "status": "INPROGRESS",
             "technologies": technologies,
@@ -117,6 +126,7 @@ class AutoprocesClient:
             "levelOfStructuredInformation": "NOT_SET",
             "levelOfUniformity": "NOT_SET",
             "codeRepositoryUrl": node_data.get('content', {}).get('repository', {}).get('url'),
+            "otherContactEmail": CONTACT_EMAIL
         }
 
         # data['id'] = 460
@@ -146,12 +156,16 @@ class AutoprocesClient:
                 data[field_name] = change['to']
 
                 if field_name == "technologies":
-                    data[field_name] = [getTechnology(data[field_name], self.get_technologies()['data'])]
+                    data[field_name] = [getTechnology(data[field_name] or "Ukendt", self.get_technologies()['data'])]
                 elif field_name == "runPeriod":
                     data[field_name] = getRunPeriod(data[field_name])
-                elif field_name == "shortDescription":
-                    if len(data[field_name]) > 140:
-                        data[field_name] = data[field_name][:137] + '...'
+                elif field_name == "longDescription":
+                    if len(data[field_name]) > 10000:
+                        data[field_name] = data[field_name][:9997] + '...'
+                    data["shortDescription"] = create_shortDescription(data[field_name])  # Generate short description
+                elif field_name == "title":
+                    if len(data[field_name]) > 65:
+                        data[field_name] = data[field_name][:62] + '...'
 
         if data == {}:
             logger.info("No changes to update")

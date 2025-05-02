@@ -30,7 +30,7 @@ def getAutoprocesFieldName(github_field_name):
     mapping = {
         "Teknologi": "technologies",
         "Skedulering": "runPeriod",
-        "body": "shortDescription",
+        "body": "longDescription",
         "title": "title"
     }
     return mapping.get(github_field_name) or None
