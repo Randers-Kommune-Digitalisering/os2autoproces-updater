@@ -87,8 +87,8 @@ class AutoprocesClient:
 
         # Extract the text value of the field with field.name = "Teknologi" if it exists, otherwise use "Ukendt"
         technologies = [
-            node.get("value") for node in node_data.get('fieldValues', {}).get('nodes', [])
-            if node.get("field", {}).get("name") == "Teknologi"
+            node.get("name") for node in node_data.get('fieldValues', {}).get('nodes', [])
+            if node.get("field", {}).get("name") == "Teknologi" and node.get("name") is not None
         ] or ["Ukendt"]
         technologies = [getTechnology(tech, self.get_technologies()['data']) for tech in technologies]
 
