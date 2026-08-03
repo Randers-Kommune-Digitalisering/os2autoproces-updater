@@ -106,6 +106,14 @@ class AutoprocesClient:
         if len(title) > 65:
             title = title[:62] + '...'
 
+        # Get repo URL if visibility is public, otherwise set it to Organization's GitHub URL
+        repo = node_data.get('content', {}).get('repository') or {}
+        visibility = (repo.get('visibility') or '').lower()
+        if visibility == 'public':
+            code_repository_url = repo.get('url')
+        else:
+            code_repository_url = f"https://github.com/{repo.get('owner', {}).get('login')}"
+
         # Create data payload
         data = {
             "title": title,
@@ -125,12 +133,10 @@ class AutoprocesClient:
             "levelOfSpeed": "NOT_SET",
             "levelOfStructuredInformation": "NOT_SET",
             "levelOfUniformity": "NOT_SET",
-            "codeRepositoryUrl": node_data.get('content', {}).get('repository', {}).get('url'),
+            "codeRepositoryUrl": code_repository_url,
             "otherContactEmail": CONTACT_EMAIL
         }
 
-        # data['id'] = 460
-        # return {'status': 201, 'data': data}
         response = requests.post(url, headers=headers, json=data)
         if response.status_code == 201:
             return {'status': 201, 'data': response.json()}

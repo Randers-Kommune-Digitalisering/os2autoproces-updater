@@ -118,6 +118,19 @@ def github_webhook():
                             'to': field.get('to').get('name', field.get('to').get('text')) if isinstance(field.get('to'), dict) else field.get('to') if isinstance(field.get('to'), str) else None
                         })
 
+                    # Set URL based on visibility
+                    repo = payload.get('repository') or {}
+                    visibility = (repo.get('visibility') or '').lower()
+                    if visibility == 'public':
+                        code_repository_url = repo.get('url')
+                    else:
+                        code_repository_url = f"https://github.com/{repo.get('owner', {}).get('login')}"
+                    changes.append({
+                        'field_name': 'codeRepositoryUrl',
+                        'from': None,
+                        'to': code_repository_url
+                    })
+
     # Update in OS2 Autoproces with changes
     if len(changes) > 0:
         response = os2_client.update_epic(os2_autoproces_id, changes)
