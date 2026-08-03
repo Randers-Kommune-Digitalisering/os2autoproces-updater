@@ -107,10 +107,12 @@ class AutoprocesClient:
             title = title[:62] + '...'
 
         # Get repo URL if visibility is public, otherwise set it to Organization's GitHub URL
-        if node_data.get('content', {}).get('repository', {}).get('visibility').lower() == 'public':
-            code_repository_url = node_data.get('content', {}).get('repository', {}).get('url')
+        repo = node_data.get('content', {}).get('repository') or {}
+        visibility = (repo.get('visibility') or '').lower()
+        if visibility == 'public':
+            code_repository_url = repo.get('url')
         else:
-            code_repository_url = f"https://github.com/{node_data.get('content', {}).get('repository', {}).get('owner', {}).get('login')}"
+            code_repository_url = f"https://github.com/{repo.get('owner', {}).get('login')}"
 
         # Create data payload
         data = {
