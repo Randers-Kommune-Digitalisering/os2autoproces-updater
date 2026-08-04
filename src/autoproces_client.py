@@ -38,7 +38,7 @@ class AutoprocesAPIClient(APIClient):
             "ApiKey": self.api_key,
             "Content-Type": "application/hal+json"
         }
-        logger.info(f"Requesting access token from {token_url} with headers: {headers}")
+        logger.debug(f"Requesting access token from {token_url}")
         try:
             if not token_url.startswith("https://"):
                 token_url = "https://" + token_url
